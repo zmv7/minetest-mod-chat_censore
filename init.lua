@@ -1,38 +1,6 @@
-local rus = {
-	["А"]="а",
-	["Б"]="б",
-	["В"]="в",
-	["Г"]="г",
-	["Д"]="д",
-	["Е"]="е",
-	["Ё"]="ё",
-	["Ж"]="ж",
-	["З"]="з",
-	["И"]="и",
-	["Й"]="й",
-	["К"]="к",
-	["Л"]="л",
-	["М"]="м",
-	["Н"]="н",
-	["О"]="о",
-	["П"]="п",
-	["Р"]="р",
-	["С"]="с",
-	["Т"]="т",
-	["У"]="у",
-	["Ф"]="ф",
-	["Х"]="х",
-	["Ц"]="ц",
-	["Ч"]="ч",
-	["Ш"]="ш",
-	["Щ"]="щ",
-	["Ь"]="ь",
-	["Ы"]="ы",
-	["Ъ"]="ъ",
-	["Э"]="э",
-	["Ю"]="ю",
-	["Я"]="я"
-}
+local ie = minetest.request_insecure_environment()
+ie.package.cpath = ie.package.cpath..";/home/user/.luarocks/lib/lua/5.1/lua-utf8.so"
+local utf8 = ie.require "lua-utf8"
 
 local blacklist = {}
 local storage = minetest.get_mod_storage()
@@ -55,30 +23,29 @@ table.insert(minetest.registered_on_chat_messages, 1, function(name, message)
 	end
 	minetest.log("action","CHAT: "..minetest.format_chat_message(name,minetest.strip_colors(message)))
 
-	local lowmsg = message:lower()
-	local toruslower = message:gsub("[%w%s]","")
-		toruslower:gsub("..",function(c)
-		if rus[c] then
-			lowmsg = lowmsg:gsub(c,rus[c])
-		end
-	end)
 	local cases = 0
 	for _,word in ipairs(blacklist) do
-		local count
 		local trickyword = ""
-		word:gsub(".",function(c)
+		utf8.gsub(word, ".",function(c)
 			trickyword = trickyword..c.."%W?"
 		end)
-		trickyword = trickyword:gsub("%%W%?$","")
-		lowmsg, count = lowmsg:gsub(trickyword,("*"):rep(#(word:gsub("[\128-\191]",""))))
-		if type(count) == "number" then
-			cases = cases + count
-		end
+		trickyword = utf8.gsub(trickyword, "%%W%?$","")
+		repeat
+			local p1,p2 = utf8.find(utf8.lower(message),trickyword)
+			if (p1 and p2) then
+				local count
+				local case = utf8.sub(message, p1,p2)
+				message, count = utf8.gsub(message, case,("*"):rep(utf8.len(word)))
+				if type(count) == "number" then
+					cases = cases + count
+				end
+			end
+		until not (p1 and p2)
 	end
+
 	if cases <= 0 then
 		return
 	end
-	message = lowmsg
 
 	if minetest.get_modpath("nick_prefix") then
 		local prefix,color = nick_prefix.get(name)
