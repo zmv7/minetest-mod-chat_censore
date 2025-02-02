@@ -81,12 +81,15 @@ table.insert(minetest.registered_on_chat_messages, 1, function(name, message)
 	message = lowmsg
 
 	if minetest.get_modpath("nick_prefix") then
-		local prefix,color = nick_prefix.get(name)
-		if prefix and color then
-			minetest.chat_send_all(minetest.format_chat_message(minetest.colorize(color,prefix).." "..name,message))
-		else
-			minetest.chat_send_all(minetest.format_chat_message(name,message))
+		local data = nick_prefix.get(name)
+		local prefix = ""
+		if data.pronouns then
+			prefix = prefix .. "["..data.pronouns.."] "
 		end
+		if data.prefix and data.color then
+			prefix = prefix .. core.colorize(data.color, "["..data.prefix.."] ")
+		end
+		core.chat_send_all(core.format_chat_message(prefix..name,message))
 	else
 		minetest.chat_send_all(minetest.format_chat_message(name,message))
 	end
